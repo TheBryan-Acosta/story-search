@@ -1,39 +1,58 @@
 // see SignupForm.js for comments
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Form, Button, Alert } from "react-bootstrap";
 
 import Auth from "../utils/auth";
 
-const Login = (props) => {
-	const [formState, setFormState] = useState({ email: "", password: "" });
+import { useMutation } from "@apollo/client";
+import { LOGIN_USER } from "../utils/mutations";
+
+const LoginForm = () => {
+	const [userFormData, setUserFormData] = useState({ email: "", password: "" });
+	const [validated] = useState(false);
+	const [showAlert, setShowAlert] = useState(false);
 	const [login, { error }] = useMutation(LOGIN_USER);
 
-	// update state based on form input changes
-	const handleChange = (event) => {
-		const { name, value } = event.target;
+	useEffect(() => {
+		if (error) {
+			setShowAlert(true);
+		} else {
+			setShowAlert(false);
+		}
+	}, [error]);
 
-		setFormState({
-			...formState,
-			[name]: value,
-		});
+	const handleInputChange = (event) => {
+		const { name, value } = event.target;
+		setUserFormData({ ...userFormData, [name]: value });
 	};
 
-	// submit form
 	const handleFormSubmit = async (event) => {
 		event.preventDefault();
 
+		// check if form has everything (as per react-bootstrap docs)
+		const form = event.currentTarget;
+		if (form.checkValidity() === false) {
+			event.preventDefault();
+			event.stopPropagation();
+		}
 		try {
 			const { data } = await login({
-				variables: { ...formState },
+				variables: { ...userFormData },
 			});
 
+			if (error) {
+				throw new Error("something went wrong!");
+			}
+
+			console.log(data.user);
 			Auth.login(data.login.token);
-		} catch (e) {
-			console.error(e);
+		} catch (err) {
+			console.error(err);
+			setShowAlert(true);
 		}
 
-		// clear form values
-		setFormState({
+		setUserFormData({
+			username: "",
 			email: "",
 			password: "",
 		});
@@ -56,8 +75,8 @@ const Login = (props) => {
 						type="text"
 						placeholder="Your email"
 						name="email"
-						onChange={handleChange}
-						value={formState.email}
+						onChange={handleInputChange}
+						value={userFormData.email}
 						required
 					/>
 					<Form.Control.Feedback type="invalid">
@@ -71,8 +90,8 @@ const Login = (props) => {
 						type="password"
 						placeholder="Your password"
 						name="password"
-						onChange={handleChange}
-						value={formState.password}
+						onChange={handleInputChange}
+						value={userFormData.password}
 						required
 					/>
 					<Form.Control.Feedback type="invalid">
@@ -91,4 +110,4 @@ const Login = (props) => {
 	);
 };
 
-export default Login;
+export default LoginForm;
